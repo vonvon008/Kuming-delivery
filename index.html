@@ -274,10 +274,37 @@
 
         // =================================================================================
         // --- CONFIGURATION FOR ENVIRONMENT ---
-        // IMPORTANT: These variables are provided by the Canvas environment.
+        
+        // IMPORTANT: The following configuration block is modified for external hosting.
+        // If the Canvas environment variables are not found (i.e., on GitHub Pages), 
+        // it falls back to a hardcoded configuration. 
+        
+        // !!! YOUR ACTUAL FIREBASE CONFIGURATION IS NOW INSERTED HERE !!!
+        const EXTERNAL_FIREBASE_CONFIG = {
+            apiKey: "AIzaSyDVIEbTu5WfF3ArVdd_oII8h4rPquFCY4c",
+            authDomain: "kuming-dispatcher.firebaseapp.com",
+            projectId: "kuming-dispatcher",
+            storageBucket: "kuming-dispatcher.firebasestorage.app",
+            messagingSenderId: "781163940881",
+            appId: "1:781163940881:web:8a119d599154bb2e58f5b0",
+            // measurementId: "G-QXV6FGTLSY" <-- measurementId is optional and excluded for simplicity
+        };
+        
+        // If hosting externally, we need a UUID function if crypto.randomUUID is not available
+        const uuidv4 = () => {
+          return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+          });
+        };
+
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'dispatch-manager-v1'; 
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {}; 
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : EXTERNAL_FIREBASE_CONFIG; // Use external config if environment variables are missing
+            
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        const currentUserId = typeof __app_id !== 'undefined' ? '' : uuidv4(); // Use UUID for anonymous ID on external deploy
         
         // --- END CONFIGURATION BLOCK ---
         // =================================================================================
@@ -371,8 +398,9 @@
         // --- FIREBASE INITIALIZATION AND AUTHENTICATION ---
         (async () => {
             try {
-                if (!firebaseConfig || Object.keys(firebaseConfig).length === 0) {
-                    throw new Error("Firebase Configuration is missing or empty. Please check your setup.");
+                // Check if the external config placeholder was updated
+                if (firebaseConfig.projectId === "YOUR_PROJECT_ID_HERE") {
+                     throw new Error("Firebase Configuration is missing or empty. Please check your setup.");
                 }
 
                 const app = initializeApp(firebaseConfig);
@@ -385,8 +413,18 @@
                     await signInWithCustomToken(auth, initialAuthToken);
                 } else {
                     console.log("Signing in Anonymously...");
+                    // On external hosting, this ensures we have a valid auth user to meet security rules
                     await signInAnonymously(auth);
                 }
+                
+                // If this is an external deploy, we set the userId to the anonymous UID
+                if (!initialAuthToken && auth.currentUser) {
+                    // This is the anonymous user ID provided by Firebase Auth
+                    // We don't use it as the application's userId until a proper login happens, 
+                    // but we ensure authentication is complete.
+                    console.log("Anonymous Auth successful.");
+                }
+
 
                 // Proceed with application setup (including admin seeding) now that we are authenticated
                 await setupApplication(); 
@@ -803,7 +841,7 @@
             if (riderHistoryCount) riderHistoryCount.textContent = historyTasks.length;
 
             if (historyTasks.length === 0) {
-                if (riderHistoryEmpty) riderHistoryEmpty.classList.remove('hidden');
+                if (riderHistoryEmpty) riderHistoryEmpty.classList.add('hidden');
             } else {
                 if (riderHistoryEmpty) riderHistoryEmpty.classList.add('hidden');
                 historyTasks.forEach(task => {
@@ -947,7 +985,7 @@
             } catch (error) {
                 console.error("Error checking active tasks:", error);
                 showMessageModal("System Error", "Could not verify active tasks. Try logging out and back in.", 'error');
-                return;
+                    return;
             }
 
 
