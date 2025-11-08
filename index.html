@@ -3,1176 +3,670 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dispatch Manager - Secure Console</title>
-    <!-- Load Tailwind CSS -->
+    <title>Kuming Dispatch Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Use Inter Font -->
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f7f9fc;
-        }
-        /* Custom scrollbar for better aesthetics */
-        .task-list::-webkit-scrollbar {
-            width: 8px;
-        }
-        .task-list::-webkit-scrollbar-thumb {
-            background-color: #94a3b8;
-            border-radius: 4px;
-        }
-        .task-list::-webkit-scrollbar-track {
-            background-color: #f1f5f9;
-        }
-    </style>
-</head>
-<body class="min-h-screen flex items-center justify-center p-4">
-
-    <div id="app" class="max-w-7xl w-full mx-auto">
-        <!-- Login Screen -->
-        <div id="login-screen" class="bg-white p-8 md:p-12 rounded-xl shadow-2xl max-w-md w-full mx-auto">
-            <h1 class="text-3xl font-extrabold text-blue-700 mb-6 text-center">Dispatch Login</h1>
-            <p class="text-center text-sm text-gray-500 mb-8">Admin: KumingAdmin008 / KumingAdmin008</p>
-            
-            <form id="login-form" class="space-y-4">
-                <div>
-                    <label for="login-username" class="block text-sm font-medium text-gray-700">Username</label>
-                    <input type="text" id="login-username" required class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="KumingAdmin008 or Rider Username">
-                </div>
-                <div>
-                    <label for="login-password" class="block text-sm font-medium text-gray-700">Password</label>
-                    <input type="password" id="login-password" required class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="Password">
-                </div>
-                <div id="login-message" class="text-red-600 text-sm h-5"></div>
-                <button type="submit" id="login-btn" class="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 transition duration-150 shadow-md">
-                    Login
-                </button>
-            </form>
-        </div>
-
-        <!-- Main Dashboard Wrapper (Hidden until logged in) -->
-        <div id="dashboard-wrapper" class="hidden min-h-screen w-full py-8">
-            <header class="mb-8 p-4 bg-white rounded-xl shadow-md border border-gray-200">
-                <div class="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
-                    <h1 class="text-3xl font-extrabold text-blue-700 tracking-tight">
-                        <span id="header-role"></span> Dashboard
-                    </h1>
-                    <div class="flex items-center space-x-4">
-                        <div id="user-info" class="p-2 bg-blue-100 text-blue-800 rounded-lg text-sm font-medium shadow-inner overflow-hidden whitespace-nowrap overflow-ellipsis">
-                            User ID:
-                        </div>
-                        <button id="logout-btn" class="bg-red-500 text-white py-2 px-4 rounded-lg font-semibold hover:bg-red-600 transition shadow-md">
-                            Logout
-                        </button>
-                    </div>
-                </div>
-            </header>
-
-            <!-- Admin Dashboard -->
-            <div id="admin-dashboard" class="hidden space-y-8">
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <!-- 1. Task Creation Panel (Admin) -->
-                    <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg h-fit sticky top-8">
-                        <h2 class="text-2xl font-semibold text-gray-800 mb-5 border-b pb-3">Post New Order</h2>
-                        <form id="task-form" class="space-y-4">
-                            <div>
-                                <label for="description" class="block text-sm font-medium text-gray-700">Order Description / Destination</label>
-                                <textarea id="description" required class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500" rows="3" placeholder="Deliver flowers to 123 Main St, Apt 4B. Contact: Jane Doe (555-1234)."></textarea>
-                            </div>
-
-                            <div>
-                                <label for="shipping-fee" class="block text-sm font-medium text-gray-700">Shipping Fee (PHP)</label>
-                                <input type="number" id="shipping-fee" required min="1" step="0.01" class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="e.g., 150.00">
-                                <p class="text-xs text-gray-500 mt-1">Rider gets 70% profit, Company gets 30% share.</p>
-                            </div>
-
-                            <button type="submit" class="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 transition duration-150 shadow-md">
-                                Post Order
-                            </button>
-                        </form>
-                    </div>
-
-                    <!-- 2. Admin Task List (Active Orders) -->
-                    <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg">
-                        <h2 class="text-2xl font-semibold text-gray-800 mb-5 border-b pb-3">Active Orders (<span id="admin-task-count">0</span>)</h2>
-                        
-                        <div id="admin-task-list-container" class="task-list space-y-4 max-h-[80vh] overflow-y-auto pr-2">
-                            <p id="admin-loading-message" class="text-center text-gray-500 p-8">Loading tasks...</p>
-                            <p id="admin-empty-message" class="text-center text-gray-500 p-8 hidden">No active orders posted yet.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 3. Admin Rider Management and Reporting -->
-                <div class="bg-white p-6 rounded-xl shadow-lg">
-                    <h2 class="text-2xl font-semibold text-gray-800 mb-5 border-b pb-3">Rider Management & History</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <!-- Add Rider Form -->
-                        <div>
-                            <h3 class="text-xl font-medium text-gray-700 mb-3">Add New Rider Account</h3>
-                            <form id="add-rider-form" class="space-y-3 p-4 border rounded-lg bg-gray-50">
-                                <div>
-                                    <label for="rider-username" class="block text-sm font-medium text-gray-700">Username</label>
-                                    <input type="text" id="rider-username" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm" placeholder="Rider's unique username">
-                                </div>
-                                <div>
-                                    <label for="rider-password" class="block text-sm font-medium text-gray-700">Password</label>
-                                    <input type="password" id="rider-password" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg shadow-sm" placeholder="Temporary password">
-                                </div>
-                                <button type="submit" id="add-rider-btn" class="w-full bg-green-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-green-700 transition shadow-md">
-                                    Create Rider Account
-                                </button>
-                                <p id="add-rider-message" class="text-sm h-5"></p>
-                            </form>
-                        </div>
-                        
-                        <!-- Rider History Viewer -->
-                        <div>
-                            <h3 class="text-xl font-medium text-gray-700 mb-3">View Rider Delivery History</h3>
-                            <div class="space-y-4">
-                                <div>
-                                    <label for="rider-selector" class="block text-sm font-medium text-gray-700">Select Rider</label>
-                                    <select id="rider-selector" class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm bg-white">
-                                        <option value="">-- Select a Rider --</option>
-                                    </select>
-                                </div>
-                                
-                                <div id="rider-history-list" class="task-list space-y-3 max-h-60 overflow-y-auto p-2 border rounded-lg bg-gray-50">
-                                    <p class="text-center text-gray-500 text-sm p-4">Select a rider above to see their completed deliveries.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Rider Dashboard -->
-            <div id="rider-dashboard" class="hidden space-y-8">
-                
-                <h2 class="text-2xl font-semibold text-gray-800 mb-5 border-b pb-3">My Orders</h2>
-
-                <!-- Tabs -->
-                <div class="flex border-b">
-                    <button data-tab="available" class="tab-btn p-3 text-lg font-medium border-b-2 border-blue-600 text-blue-600 transition duration-150">Available Orders</button>
-                    <button data-tab="my" class="tab-btn p-3 text-lg font-medium border-b-2 border-transparent text-gray-500 hover:text-blue-600 transition duration-150">My Active Orders</button>
-                    <button data-tab="history" class="tab-btn p-3 text-lg font-medium border-b-2 border-transparent text-gray-500 hover:text-blue-600 transition duration-150">Completed History</button>
-                </div>
-
-                <!-- Tab Content: Available Orders -->
-                <div id="available-orders-tab" class="tab-content bg-white p-6 rounded-xl shadow-lg">
-                    <h3 class="text-xl font-medium text-gray-700 mb-4">Available Orders (<span id="rider-available-count">0</span>)</h3>
-
-                    <!-- Message container for active task check -->
-                    <div id="active-task-warning" class="hidden mb-4 p-4 border border-yellow-300 bg-yellow-100 text-yellow-800 rounded-lg font-medium">
-                        You currently have an active order. Please complete or cancel your current order before claiming a new one.
-                    </div>
-
-                    <div id="rider-available-list" class="task-list grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[50vh] overflow-y-auto pr-2">
-                        <p id="rider-available-loading" class="text-center text-gray-500 p-8 col-span-full">Loading available orders...</p>
-                        <p id="rider-available-empty" class="text-center text-gray-500 p-8 hidden col-span-full">No orders currently available for claiming. Check back soon!</p>
-                    </div>
-                </div>
-
-                <!-- Tab Content: My Active Orders -->
-                <div id="my-orders-tab" class="tab-content hidden bg-white p-6 rounded-xl shadow-lg">
-                    <h3 class="text-xl font-medium text-gray-700 mb-4">My Active Orders (<span id="rider-my-count">0</span>)</h3>
-                    <div id="rider-my-list" class="task-list grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[50vh] overflow-y-auto pr-2">
-                        <p id="rider-my-loading" class="text-center text-gray-500 p-8 col-span-full">Loading your claimed orders...</p>
-                        <p id="rider-my-empty" class="text-center text-gray-500 p-8 hidden col-span-full">You have not claimed any orders yet.</p>
-                    </div>
-                </div>
-
-                <!-- Tab Content: History -->
-                <div id="history-orders-tab" class="tab-content hidden bg-white p-6 rounded-xl shadow-lg">
-                    <h3 class="text-xl font-medium text-gray-700 mb-4">Completed Deliveries History (<span id="rider-history-count">0</span>)</h3>
-                    <div id="rider-history-list-content" class="task-list grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[50vh] overflow-y-auto pr-2">
-                         <p id="rider-history-empty" class="text-center text-gray-500 p-8 col-span-full">No completed deliveries yet.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Custom Modal for Task Details/Update/Claim -->
-    <div id="task-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-xl p-6 w-full max-w-lg shadow-2xl relative">
-            <h3 class="text-2xl font-bold mb-4 text-gray-800" id="modal-title">Task Details: #<span id="modal-task-id"></span></h3>
-            
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Description / Destination</label>
-                    <textarea id="modal-description" class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm bg-gray-50 resize-none" rows="4" readonly></textarea>
-                </div>
-
-                <div id="claimed-by-row" class="hidden">
-                    <label class="block text-sm font-medium text-gray-700">Claimed By</label>
-                    <input type="text" id="modal-claimedBy" class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm bg-gray-50" readonly>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Shipping Fee (Total)</label>
-                    <input type="text" id="modal-shippingFee" class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm bg-gray-50" readonly>
-                </div>
-
-                <div id="modal-profit-share-container" class="space-y-2 p-3 border rounded-lg bg-blue-50">
-                    <p class="text-sm font-medium text-gray-700">Rider Profit (70%): <span id="modal-riderProfit" class="font-bold text-blue-600"></span></p>
-                    <p class="text-sm font-medium text-gray-700">Company Share (30%): <span id="modal-companyShare" class="font-bold text-red-600"></span></p>
-                </div>
-
-                <div id="status-row">
-                    <label for="modal-status" class="block text-sm font-medium text-gray-700">Status</label>
-                    <select id="modal-status" class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white">
-                        <option value="Pending">Pending</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="Complete">Complete</option>
-                        <option value="Canceled">Canceled</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="mt-6 flex justify-between space-x-3">
-                <button id="modal-delete-btn" class="flex-1 bg-red-500 text-white py-2 px-4 rounded-lg font-semibold hover:bg-red-600 transition shadow-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 hidden">
-                    Delete Order
-                </button>
-                <button id="modal-update-btn" class="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-green-700 transition shadow-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 hidden">
-                    Update Status
-                </button>
-                <button id="modal-claim-btn" class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700 transition shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 hidden">
-                    Claim Order
-                </button>
-                <button id="modal-close-btn" class="flex-1 bg-gray-300 text-gray-800 py-2 px-4 rounded-lg font-semibold hover:bg-gray-400 transition shadow-md">
-                    Close
-                </button>
-            </div>
-            
-            <button id="modal-close-x" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-            </button>
-        </div>
-    </div>
-    
-    <!-- Custom Message Modal (for error display) -->
-    <div id="message-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl relative">
-            <h3 class="text-xl font-bold mb-3 text-red-600" id="message-modal-title">Error</h3>
-            <p id="message-modal-body" class="text-gray-700 mb-6">An error occurred.</p>
-            <button id="message-modal-close-btn" class="w-full bg-red-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-red-700 transition shadow-md">
-                OK
-            </button>
-        </div>
-    </div>
-
-
-    <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, serverTimestamp, setLogLevel, getDocs, where, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Set log level to Debug for visibility
-        setLogLevel('Debug');
-
-        // =================================================================================
-        // --- CONFIGURATION FOR ENVIRONMENT ---
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, where, addDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        // IMPORTANT: The following configuration block is modified for external hosting.
-        // If the Canvas environment variables are not found (i.e., on GitHub Pages), 
-        // it falls back to a hardcoded configuration. 
-        
-        // !!! YOUR ACTUAL FIREBASE CONFIGURATION IS NOW INSERTED HERE !!!
-        const EXTERNAL_FIREBASE_CONFIG = {
-            apiKey: "AIzaSyDVIEbTu5WfF3ArVdd_oII8h4rPquFCY4c",
-            authDomain: "kuming-dispatcher.firebaseapp.com",
-            projectId: "kuming-dispatcher",
-            storageBucket: "kuming-dispatcher.firebasestorage.app",
-            messagingSenderId: "781163940881",
-            appId: "1:781163940881:web:8a119d599154bb2e58f5b0",
-            // measurementId: "G-QXV6FGTLSY" <-- measurementId is optional and excluded for simplicity
-        };
-        
-        // If hosting externally, we need a UUID function if crypto.randomUUID is not available
-        const uuidv4 = () => {
-          return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-            const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
-          });
-        };
+        // Set Firestore logging to Debug for troubleshooting
+        setLogLevel('debug');
 
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'dispatch-manager-v1'; 
-        const firebaseConfig = typeof __firebase_config !== 'undefined' 
-            ? JSON.parse(__firebase_config) 
-            : EXTERNAL_FIREBASE_CONFIG; // Use external config if environment variables are missing
-            
+        // IMPORTANT GLOBAL VARIABLES PROVIDED BY THE CANVAS ENVIRONMENT
+        // We use dummy values if the environment variables aren't defined (like when testing locally)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfigRaw = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        const currentUserId = typeof __app_id !== 'undefined' ? '' : uuidv4(); // Use UUID for anonymous ID on external deploy
-        
-        // --- END CONFIGURATION BLOCK ---
-        // =================================================================================
 
-        let db, auth;
-        let userId = null; // Stores the Firestore user document ID of the logged-in user
+        let firebaseConfig;
+        try {
+            firebaseConfig = JSON.parse(firebaseConfigRaw);
+        } catch (e) {
+            console.error("Failed to parse Firebase configuration.", e);
+            // This is the correct, critical check for the live environment error
+            if (document.getElementById('app')) {
+                document.getElementById('app').innerHTML = `
+                    <div class="flex items-center justify-center min-h-screen bg-gray-50">
+                        <div class="p-6 bg-white rounded-xl shadow-2xl text-center max-w-sm">
+                            <h2 class="text-xl font-bold text-red-600 mb-3">Initialization Error</h2>
+                            <p class="text-gray-700">Firebase Configuration is missing or empty. Please check your setup.</p>
+                        </div>
+                    </div>
+                `;
+            }
+            throw new Error("Firebase Configuration is missing or empty. Please check your setup.");
+        }
+        
+        // --- CORE FIREBASE INITIALIZATION ---
+        let app, db, auth;
+        let userId = null;
         let userRole = null;
-        let allRiders = []; // List of all users with role 'Rider'
-        let hasActiveTask = false; // Global state for rider's active task status
-
-        // --- DOM Elements ---
-        const loginScreen = document.getElementById('login-screen');
-        const dashboardWrapper = document.getElementById('dashboard-wrapper');
-        const loginForm = document.getElementById('login-form');
-        const loginUsernameInput = document.getElementById('login-username');
-        const loginPasswordInput = document.getElementById('login-password');
-        const loginMessage = document.getElementById('login-message');
-        const loginBtn = document.getElementById('login-btn');
-        const logoutBtn = document.getElementById('logout-btn');
-
-        const headerRole = document.getElementById('header-role');
-        const userInfo = document.getElementById('user-info');
-
-        // Dashboard Elements
-        const adminDashboard = document.getElementById('admin-dashboard');
-        const riderDashboard = document.getElementById('rider-dashboard');
         
-        // Admin Management
-        const addRiderForm = document.getElementById('add-rider-form');
-        const addRiderBtn = document.getElementById('add-rider-btn');
-        const addRiderMessage = document.getElementById('add-rider-message');
-        const riderSelector = document.getElementById('rider-selector');
-        const adminRiderHistoryList = document.getElementById('rider-history-list');
-
-        // Task Form
-        const taskForm = document.getElementById('task-form');
-        const shippingFeeInput = document.getElementById('shipping-fee');
-
-        // Admin List Elements
-        const adminTaskListContainer = document.getElementById('admin-task-list-container');
-        const adminLoadingMessage = document.getElementById('admin-loading-message');
-        const adminEmptyMessage = document.getElementById('admin-empty-message');
-        const adminTaskCountElement = document.getElementById('admin-task-count');
-
-        // Rider List Elements
-        const riderAvailableList = document.getElementById('rider-available-list');
-        const riderAvailableCount = document.getElementById('rider-available-count');
-        const riderAvailableLoading = document.getElementById('rider-available-loading');
-        const riderAvailableEmpty = document.getElementById('rider-available-empty');
-        const activeTaskWarning = document.getElementById('active-task-warning');
-        
-        const riderMyList = document.getElementById('rider-my-list');
-        const riderMyCount = document.getElementById('rider-my-count');
-        const riderMyLoading = document.getElementById('rider-my-loading');
-        const riderMyEmpty = document.getElementById('rider-my-empty');
-        const riderHistoryListContent = document.getElementById('rider-history-list-content');
-        const riderHistoryCount = document.getElementById('rider-history-count');
-        const riderHistoryEmpty = document.getElementById('rider-history-empty');
-
-        // Modal elements
-        const taskModal = document.getElementById('task-modal');
-        const modalStatus = document.getElementById('modal-status');
-        const claimedByRow = document.getElementById('claimed-by-row');
-        const statusRow = document.getElementById('status-row');
-        const modalDeleteBtn = document.getElementById('modal-delete-btn');
-        const modalUpdateBtn = document.getElementById('modal-update-btn');
-        const modalClaimBtn = document.getElementById('modal-claim-btn');
-        
-        const modalShippingFee = document.getElementById('modal-shippingFee'); 
-        const modalRiderProfit = document.getElementById('modal-riderProfit'); 
-        const modalCompanyShare = document.getElementById('modal-companyShare'); 
-        
-        // Message Modal Elements
-        const messageModal = document.getElementById('message-modal');
-        const messageModalTitle = document.getElementById('message-modal-title');
-        const messageModalBody = document.getElementById('message-modal-body');
-
-        let currentTaskId = null;
-        let isDeleteConfirmed = false;
-
-        // --- FIREBASE PATHS ---
-        function getTasksCollectionPath() {
-            return `artifacts/${appId}/public/data/dispatch_orders`;
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            console.log("Firebase initialized successfully.");
+        } catch (e) {
+            console.error("Firebase Initialization failed during initializeApp.", e);
+            if (document.getElementById('app')) {
+                document.getElementById('app').innerHTML = `
+                    <div class="flex items-center justify-center min-h-screen bg-gray-50">
+                        <div class="p-6 bg-white rounded-xl shadow-2xl text-center max-w-sm">
+                            <h2 class="text-xl font-bold text-red-600 mb-3">Initialization Failed</h2>
+                            <p class="text-gray-700">Error: ${e.message}</p>
+                        </div>
+                    </div>
+                `;
+            }
+            throw new Error("Firebase Initialization failed. " + e.message);
         }
 
-        function getUsersCollectionPath() {
-             // Store users in a shared, public collection for lookups
-            return `artifacts/${appId}/public/data/users`;
-        }
+        const USERS_COLLECTION_PATH = `/artifacts/${appId}/public/data/users`;
+        const ORDERS_COLLECTION_PATH = `/artifacts/${appId}/public/data/orders`;
 
-        // --- FIREBASE INITIALIZATION AND AUTHENTICATION ---
-        (async () => {
-            try {
-                // Check if the external config placeholder was updated
-                if (firebaseConfig.projectId === "YOUR_PROJECT_ID_HERE") {
-                     throw new Error("Firebase Configuration is missing or empty. Please check your setup.");
-                }
-
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                
-                // Authentication: Use custom token if available, otherwise sign in anonymously.
-                if (initialAuthToken) {
-                    console.log("Signing in with Custom Token...");
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    console.log("Signing in Anonymously...");
-                    // On external hosting, this ensures we have a valid auth user to meet security rules
-                    await signInAnonymously(auth);
-                }
-                
-                // If this is an external deploy, we set the userId to the anonymous UID
-                if (!initialAuthToken && auth.currentUser) {
-                    // This is the anonymous user ID provided by Firebase Auth
-                    // We don't use it as the application's userId until a proper login happens, 
-                    // but we ensure authentication is complete.
-                    console.log("Anonymous Auth successful.");
-                }
-
-
-                // Proceed with application setup (including admin seeding) now that we are authenticated
-                await setupApplication(); 
-
-            } catch (error) {
-                console.error("Firebase initialization failed:", error);
-                document.getElementById('login-message').textContent = `Initialization failed. Error: ${error.message}. Check console for details.`;
-                document.getElementById('login-btn').disabled = true;
-            }
-        })();
-
-
-        /**
-         * Simulates a "login" by checking credentials against the Firestore 'users' collection.
-         */
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            loginMessage.textContent = '';
-            loginBtn.textContent = 'Logging in...';
-            loginBtn.disabled = true;
-
-            const username = loginUsernameInput.value.trim();
-            const password = loginPasswordInput.value.trim();
-            
-            if (!username || !password) {
-                 loginMessage.textContent = 'Please enter both username and password.';
-                 loginBtn.textContent = 'Login';
-                 loginBtn.disabled = false;
-                 return;
-            }
-
-            try {
-                // 1. Query users collection by username
-                const usersRef = collection(db, getUsersCollectionPath());
-                const q = query(usersRef, where("username", "==", username));
-                const snapshot = await getDocs(q);
-
-                if (snapshot.empty) {
-                    loginMessage.textContent = 'Invalid username or password.';
-                    return;
-                }
-
-                // 2. Check password
-                const userDoc = snapshot.docs[0];
-                const userData = userDoc.data();
-
-                if (userData.password !== password) {
-                    loginMessage.textContent = 'Invalid username or password.';
-                    return;
-                }
-                
-                // 3. Successful Login: Set global state and switch view
-                userId = userDoc.id; // Use the Firestore document ID as the unique user identifier
-                userRole = userData.role;
-                
-                loginMessage.textContent = '';
-                
-                showDashboard();
-                listenForTasks(); // Start real-time task listeners
-                
-                if (userRole === 'Admin') {
-                    listenForRiders(); // Start rider list listener for Admin panel
-                }
-
-            } catch (error) {
-                console.error("Login failed:", error);
-                loginMessage.textContent = 'An error occurred during login. Try again.';
-            } finally {
-                loginBtn.textContent = 'Login';
-                loginBtn.disabled = false;
-            }
-        });
-
-        // --- ADMIN RIDER MANAGEMENT ---
-
-        addRiderForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            if (userRole !== 'Admin' || !db) return;
-
-            const username = document.getElementById('rider-username').value.trim();
-            const password = document.getElementById('rider-password').value.trim();
-            
-            addRiderMessage.textContent = '';
-            addRiderBtn.disabled = true;
-            addRiderBtn.textContent = 'Creating...';
-
-            try {
-                // Check if username already exists
-                const q = query(collection(db, getUsersCollectionPath()), where("username", "==", username));
-                const snapshot = await getDocs(q);
-
-                if (!snapshot.empty) {
-                    addRiderMessage.textContent = 'Error: Username already exists.';
-                    addRiderMessage.classList.add('text-red-500');
-                    addRiderMessage.classList.remove('text-green-500');
-                    return;
-                }
-                
-                // Create new rider document
-                const newRider = {
-                    username: username,
-                    password: password, // Simplified password storage for this environment
-                    role: 'Rider',
-                    createdAt: serverTimestamp(),
-                };
-
-                await addDoc(collection(db, getUsersCollectionPath()), newRider);
-
-                addRiderMessage.textContent = `Rider '${username}' created successfully!`;
-                addRiderMessage.classList.remove('text-red-500');
-                addRiderMessage.classList.add('text-green-500');
-                addRiderForm.reset();
-
-            } catch (error) {
-                console.error("Error creating rider:", error);
-                addRiderMessage.textContent = 'Error creating rider account.';
-                addRiderMessage.classList.add('text-red-500');
-                addRiderMessage.classList.remove('text-green-500');
-            } finally {
-                 addRiderBtn.disabled = false;
-                 addRiderBtn.textContent = 'Create Rider Account';
-            }
-        });
-        
-        // --- ADMIN RIDER HISTORY LISTENER ---
-
-        function listenForRiders() {
-            if (userRole !== 'Admin' || !db) return;
-
-            const q = query(collection(db, getUsersCollectionPath()), where("role", "==", "Rider"));
-
-            onSnapshot(q, (snapshot) => {
-                allRiders = [];
-                riderSelector.innerHTML = '<option value="">-- Select a Rider --</option>';
-
-                snapshot.forEach((doc) => {
-                    const rider = { id: doc.id, ...doc.data() };
-                    allRiders.push(rider);
-                    
-                    const option = document.createElement('option');
-                    option.value = rider.id;
-                    option.textContent = rider.username;
-                    riderSelector.appendChild(option);
-                });
-            }, (error) => {
-                console.error("Error listening for riders:", error);
-            });
-        }
-        
-        riderSelector.addEventListener('change', (e) => {
-            const selectedRiderId = e.target.value;
-            // The main task listener handles updating the history view when the selector changes
-        });
-
-        // --- UI & STATE MANAGEMENT ---
-
-        function showDashboard() {
-            // Update Header
-            headerRole.textContent = userRole;
-            // Display only a short ID for the logged in user's Firestore Document ID for brevity
-            userInfo.textContent = `Logged in as: ${userRole} (${userId.substring(0, 8) || 'N/A'}...)`;
-
-            // Display correct dashboard
-            loginScreen.classList.add('hidden');
-            dashboardWrapper.classList.remove('hidden');
-
-            if (userRole === 'Admin') {
-                adminDashboard.classList.remove('hidden');
-                riderDashboard.classList.add('hidden');
-                userInfo.classList.remove('bg-blue-100');
-                userInfo.classList.add('bg-green-100', 'text-green-800');
+        // --- AUTH STATE LISTENER & INITIAL SIGN IN ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userId = user.uid;
+                await fetchUserRole(userId);
+                renderApp();
             } else {
-                riderDashboard.classList.remove('hidden');
-                adminDashboard.classList.add('hidden');
-                userInfo.classList.remove('bg-green-100', 'text-green-800');
-                userInfo.classList.add('bg-blue-100', 'text-blue-800');
-            }
-            // Ensure Rider tab defaults to "Available"
-            if (userRole === 'Rider') {
-                switchRiderTab('available');
-            }
-        }
-
-        logoutBtn.addEventListener('click', () => {
-            userId = null;
-            userRole = null;
-            // We don't sign out the Firebase anonymous user, we just clear the application's logical login state
-            // signOut(auth); 
-            dashboardWrapper.classList.add('hidden');
-            loginScreen.classList.remove('hidden');
-            loginForm.reset(); // Clear credentials
-            adminRiderHistoryList.innerHTML = ''; // Clear history
-        });
-        
-        // --- INITIAL DATA SEEDING (Admin Account) ---
-
-        async function setupApplication() {
-            // Check for and create the hardcoded admin account if it doesn't exist
-            const ADMIN_USERNAME = "KumingAdmin008";
-            const ADMIN_PASSWORD = "KumingAdmin008";
-
-            try {
-                const adminRef = collection(db, getUsersCollectionPath());
-                const q = query(adminRef, where("username", "==", ADMIN_USERNAME));
-                const snapshot = await getDocs(q);
-
-                if (snapshot.empty) {
-                    // Use addDoc to let Firestore assign the document ID
-                    await addDoc(adminRef, {
-                        username: ADMIN_USERNAME,
-                        password: ADMIN_PASSWORD,
-                        role: 'Admin',
-                        createdAt: serverTimestamp(),
-                    });
-                    console.log("Admin account seeded successfully.");
+                // If not signed in yet, try to sign in with the custom token or anonymously
+                if (initialAuthToken) {
+                    try {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                        console.log("Signed in with custom token.");
+                    } catch (error) {
+                        console.error("Error signing in with custom token:", error);
+                        // Fallback to anonymous sign-in if custom token fails
+                        await signInAnonymously(auth);
+                        console.log("Signed in anonymously (fallback).");
+                    }
+                } else {
+                    // Fallback to anonymous sign-in if no token is available
+                    await signInAnonymously(auth);
+                    console.log("Signed in anonymously (default).");
                 }
-
-            } catch (error) {
-                console.error("Admin seeding failed:", error); 
             }
-        }
-        
-        // --- RIDER DASHBOARD TABS ---
-        document.querySelectorAll('.tab-btn').forEach(button => {
-            button.addEventListener('click', (e) => {
-                switchRiderTab(e.target.dataset.tab);
-            });
         });
 
-        function switchRiderTab(tabName) {
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
-            document.querySelectorAll('.tab-btn').forEach(button => {
-                button.classList.remove('border-blue-600', 'text-blue-600');
-                button.classList.add('border-transparent', 'text-gray-500', 'hover:text-blue-600');
-            });
+        // --- AUTHENTICATION FUNCTIONS ---
 
-            document.getElementById(`${tabName}-orders-tab`).classList.remove('hidden');
-            document.querySelector(`.tab-btn[data-tab="${tabName}"]`).classList.add('border-blue-600', 'text-blue-600');
-            document.querySelector(`.tab-btn[data-tab="${tabName}"]`).classList.remove('border-transparent', 'text-gray-500', 'hover:text-blue-600');
+        async function fetchUserRole(uid) {
+            try {
+                const userDocRef = doc(db, USERS_COLLECTION_PATH, uid);
+                const userDocSnap = await getDoc(userDocRef);
+                
+                if (userDocSnap.exists()) {
+                    const userData = userDocSnap.data();
+                    userRole = userData.role || 'guest';
+                    console.log(`User ${uid} role: ${userRole}`);
+                } else {
+                    // User document doesn't exist, assume a guest/unregistered role for now
+                    userRole = 'guest';
+                    console.log(`User document not found for ${uid}. Assuming guest role.`);
+                }
+            } catch (error) {
+                console.error("Error fetching user role:", error);
+                userRole = 'guest'; // Default to guest on error
+            }
         }
 
-        // --- TASK CRUD & LISTENERS ---
+        async function registerUser(uid, role) {
+            const userDocRef = doc(db, USERS_COLLECTION_PATH, uid);
+            await setDoc(userDocRef, { 
+                role: role,
+                uid: uid,
+                registeredAt: serverTimestamp()
+            }, { merge: true });
+        }
 
-        taskForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            if (userRole !== 'Admin' || !db) return;
+        async function handleLogin() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            let role = 'guest';
+            let loginSuccessful = false;
+            let tempUserId = null;
 
-            const description = document.getElementById('description').value;
-            const shippingFee = parseFloat(shippingFeeInput.value);
-
-            if (isNaN(shippingFee) || shippingFee <= 0) {
-                console.error("Invalid shipping fee entered.");
+            // Simplified Mock Authentication/Role Assignment
+            if (username === 'KumingAdmin008' && password === 'KumingAdmin008') {
+                role = 'admin';
+                loginSuccessful = true;
+                tempUserId = 'KumingAdmin008';
+            } else if (username === 'KumingRider008' && password === 'KumingRider008') {
+                role = 'rider';
+                loginSuccessful = true;
+                tempUserId = 'KumingRider008';
+            } else {
+                showModal('Login Failed', 'Invalid username or password.');
                 return;
             }
 
-            const RIDER_SHARE = 0.70;
-            const COMPANY_SHARE = 0.30;
-            
-            const riderProfit = (shippingFee * RIDER_SHARE).toFixed(2);
-            const companyShare = (shippingFee * COMPANY_SHARE).toFixed(2);
+            if (loginSuccessful) {
+                // In a real app, this would be a secure authentication mechanism
+                // Here, we just set the local state and register the user
+                if (auth.currentUser && auth.currentUser.isAnonymous) {
+                    // Sign out the anonymous user first if one exists
+                    await signOut(auth);
+                }
+                
+                // For this mock login, we will treat the username as a temporary ID.
+                // In a real application, you would use Firebase Auth with email/password
+                // or a custom token generated on a backend server.
+                userId = tempUserId;
+                userRole = role;
 
-            const newOrder = {
-                description: description,
-                shippingFee: shippingFee,
-                riderProfit: parseFloat(riderProfit),
-                companyShare: parseFloat(companyShare),
-                status: 'Pending', 
-                creatorId: userId, 
-                claimedBy: null,   
-                createdAt: serverTimestamp(),
-            };
+                // Register the mock user in the database
+                await registerUser(userId, userRole);
+                
+                // Since we are not using standard Firebase email/password auth,
+                // we manually trigger the re-render here.
+                renderApp();
+            }
+        }
+        
+        function handleLogout() {
+            userId = null;
+            userRole = null;
+            signOut(auth).then(() => {
+                // After signing out, sign back in anonymously to keep Firestore access
+                signInAnonymously(auth).then(() => {
+                    renderApp(); // Rerender to show login screen
+                }).catch(e => {
+                    console.error("Error signing in anonymously after logout:", e);
+                    renderApp(); // Still rerender
+                });
+            }).catch((error) => {
+                console.error("Error during sign out:", error);
+                renderApp(); // Still rerender
+            });
+        }
+
+        // --- ORDER MANAGEMENT FUNCTIONS ---
+
+        async function createNewOrder() {
+            if (userRole !== 'admin') {
+                showModal('Permission Denied', 'Only Admins can create new orders.');
+                return;
+            }
+            
+            const customerName = document.getElementById('new-customer-name').value;
+            const address = document.getElementById('new-address').value;
+            const details = document.getElementById('new-details').value;
+
+            if (!customerName || !address || !details) {
+                showModal('Error', 'Please fill in all order details.');
+                return;
+            }
 
             try {
-                await addDoc(collection(db, getTasksCollectionPath()), newOrder);
-                taskForm.reset();
+                const newOrder = {
+                    customerName,
+                    address,
+                    details,
+                    status: 'Pending',
+                    adminId: userId,
+                    riderId: null,
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp(),
+                };
+
+                await addDoc(collection(db, ORDERS_COLLECTION_PATH), newOrder);
+                showModal('Success', 'New order created successfully!');
+                
+                // Clear form
+                document.getElementById('new-customer-name').value = '';
+                document.getElementById('new-address').value = '';
+                document.getElementById('new-details').value = '';
+
             } catch (error) {
-                console.error("Error posting order:", error);
+                console.error("Error creating new order: ", error);
+                showModal('Error', `Failed to create order. ${error.message}`);
             }
-        });
+        }
 
-        function listenForTasks() {
-            if (!db || !userId) return;
+        async function assignRider(orderId) {
+            if (userRole !== 'admin') {
+                showModal('Permission Denied', 'Only Admins can assign riders.');
+                return;
+            }
 
-            const tasksCollectionRef = collection(db, getTasksCollectionPath());
-            const q = query(tasksCollectionRef); 
+            const riderSelect = document.getElementById(`rider-select-${orderId}`);
+            const selectedRiderId = riderSelect.value;
+            
+            if (!selectedRiderId) {
+                showModal('Error', 'Please select a rider.');
+                return;
+            }
 
-            onSnapshot(q, (snapshot) => {
-                const tasks = [];
-                snapshot.forEach((doc) => {
-                    tasks.push({ id: doc.id, ...doc.data() });
+            try {
+                const orderDocRef = doc(db, ORDERS_COLLECTION_PATH, orderId);
+                await updateDoc(orderDocRef, {
+                    riderId: selectedRiderId,
+                    status: 'Assigned',
+                    updatedAt: serverTimestamp(),
                 });
+                showModal('Success', `Order ${orderId.substring(0, 4)}... assigned to rider ${selectedRiderId}.`);
+            } catch (error) {
+                console.error("Error assigning rider: ", error);
+                showModal('Error', `Failed to assign rider. ${error.message}`);
+            }
+        }
+        
+        async function updateOrderStatus(orderId, newStatus) {
+            if (userRole !== 'rider') {
+                showModal('Permission Denied', 'Only Riders can update delivery status.');
+                return;
+            }
 
-                // Client-side sort by creation time (Newest first)
-                tasks.sort((a, b) => {
-                    const timeA = a.createdAt?.toDate()?.getTime() || 0;
-                    const timeB = b.createdAt?.toDate()?.getTime() || 0;
-                    return timeB - timeA; 
+            try {
+                const orderDocRef = doc(db, ORDERS_COLLECTION_PATH, orderId);
+                await updateDoc(orderDocRef, {
+                    status: newStatus,
+                    updatedAt: serverTimestamp(),
                 });
+                showModal('Success', `Order ${orderId.substring(0, 4)}... status updated to ${newStatus}.`);
+            } catch (error) {
+                console.error(`Error updating status to ${newStatus}: `, error);
+                showModal('Error', `Failed to update status. ${error.message}`);
+            }
+        }
 
-                if (userRole === 'Admin') {
-                    renderAdminTasks(tasks);
-                    // Rerender history if a rider is selected
-                    if(riderSelector.value) {
-                        // Pass the full task list and the currently selected rider ID
-                        renderAdminRiderHistory(riderSelector.value, tasks);
-                    } else {
-                        // Clear history list if no rider is selected
-                        adminRiderHistoryList.innerHTML = '<p class="text-center text-gray-500 text-sm p-4">Select a rider above to see their completed deliveries.</p>';
-                    }
-                } else if (userRole === 'Rider') {
-                    renderRiderTasks(tasks);
-                }
+        async function completeOrder(orderId) {
+            if (userRole !== 'rider') {
+                showModal('Permission Denied', 'Only Riders can complete orders.');
+                return;
+            }
 
+            try {
+                const orderDocRef = doc(db, ORDERS_COLLECTION_PATH, orderId);
+                await updateDoc(orderDocRef, {
+                    status: 'Completed',
+                    updatedAt: serverTimestamp(),
+                    completedAt: serverTimestamp(),
+                });
+                showModal('Success', `Order ${orderId.substring(0, 4)}... successfully completed!`);
+            } catch (error) {
+                console.error("Error completing order: ", error);
+                showModal('Error', `Failed to complete order. ${error.message}`);
+            }
+        }
+        
+
+        // --- DATA & RENDER MANAGEMENT ---
+
+        let allOrders = [];
+        let allRiders = [];
+
+        function startOrderListener() {
+            // Base query for all orders
+            let orderQuery = collection(db, ORDERS_COLLECTION_PATH);
+
+            if (userRole === 'rider') {
+                // Rider only sees orders assigned to them
+                orderQuery = query(orderQuery, where('riderId', '==', userId));
+            }
+
+            // Real-time listener for orders
+            onSnapshot(orderQuery, (snapshot) => {
+                allOrders = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                allOrders.sort((a, b) => b.createdAt?.toMillis() - a.createdAt?.toMillis()); // Sort by newest first
+                renderApp();
             }, (error) => {
                 console.error("Error listening to orders:", error);
+                showModal('Data Error', 'Failed to load orders in real-time. Check console for details.');
             });
         }
         
-        // --- RENDER FUNCTIONS ---
+        function startRiderListener() {
+            // Real-time listener for riders (users with role 'rider')
+            const riderQuery = query(collection(db, USERS_COLLECTION_PATH), where('role', '==', 'rider'));
+            onSnapshot(riderQuery, (snapshot) => {
+                allRiders = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderApp();
+            }, (error) => {
+                console.error("Error listening to riders:", error);
+                // Non-critical error, continue rendering
+            });
+        }
+        
+        let isListenersActive = false;
+        function renderApp() {
+            const appDiv = document.getElementById('app');
+            if (!appDiv) return;
 
-        function renderAdminTasks(allTasks) {
-            // Filter: Only show tasks that are NOT complete and NOT canceled (Active Dispatch Queue)
-            const activeTasks = allTasks.filter(task => task.status !== 'Complete' && task.status !== 'Canceled');
-
-            adminTaskListContainer.innerHTML = '';
-            if (adminLoadingMessage) adminLoadingMessage.classList.add('hidden');
-            if (adminTaskCountElement) adminTaskCountElement.textContent = activeTasks.length;
+            if (!userId || !userRole || userRole === 'guest') {
+                appDiv.innerHTML = renderLoginScreen();
+                document.getElementById('login-button').addEventListener('click', handleLogin);
+                isListenersActive = false;
+                return;
+            }
             
-            if (activeTasks.length === 0) {
-                if (adminEmptyMessage) adminEmptyMessage.classList.remove('hidden');
-            } else {
-                if (adminEmptyMessage) adminEmptyMessage.classList.add('hidden');
-                activeTasks.forEach(task => {
-                    adminTaskListContainer.appendChild(createTaskElement(task, 'Admin'));
+            // Activate listeners only after successful login/auth
+            if (!isListenersActive) {
+                startOrderListener();
+                startRiderListener();
+                isListenersActive = true;
+            }
+
+            let content = '';
+            if (userRole === 'admin') {
+                content = renderAdminDashboard();
+            } else if (userRole === 'rider') {
+                content = renderRiderDashboard();
+            }
+
+            appDiv.innerHTML = renderLayout(content);
+            document.getElementById('logout-button').addEventListener('click', handleLogout);
+
+            // Attach event listeners after rendering
+            if (userRole === 'admin') {
+                document.getElementById('create-order-button').addEventListener('click', createNewOrder);
+                allOrders.forEach(order => {
+                    const assignBtn = document.getElementById(`assign-btn-${order.id}`);
+                    if (assignBtn) {
+                        assignBtn.addEventListener('click', () => assignRider(order.id));
+                    }
+                });
+            } else if (userRole === 'rider') {
+                allOrders.forEach(order => {
+                    const startBtn = document.getElementById(`start-btn-${order.id}`);
+                    const deliveredBtn = document.getElementById(`delivered-btn-${order.id}`);
+                    const completeBtn = document.getElementById(`complete-btn-${order.id}`);
+
+                    if (startBtn) startBtn.addEventListener('click', () => updateOrderStatus(order.id, 'In Progress'));
+                    if (deliveredBtn) deliveredBtn.addEventListener('click', () => updateOrderStatus(order.id, 'Delivered'));
+                    if (completeBtn) completeBtn.addEventListener('click', () => completeOrder(order.id));
                 });
             }
         }
         
-        function renderAdminRiderHistory(selectedRiderId, allTasks) {
-            // Filter only tasks claimed by the selected rider and completed
-            const historyTasks = allTasks
-                .filter(task => task.claimedBy === selectedRiderId && task.status === 'Complete')
-                .sort((a, b) => {
-                    // Sort by claimedAt or createdAt if claimedAt is missing
-                    const timeA = a.claimedAt?.toDate()?.getTime() || a.createdAt?.toDate()?.getTime() || 0;
-                    const timeB = b.claimedAt?.toDate()?.getTime() || b.createdAt?.toDate()?.getTime() || 0;
-                    return timeB - timeA; 
-                });
-                
-            adminRiderHistoryList.innerHTML = '';
-            
-            if (historyTasks.length === 0) {
-                adminRiderHistoryList.innerHTML = `<p class="text-center text-gray-500 text-sm p-4">This rider has no completed deliveries yet.</p>`;
-            } else {
-                 historyTasks.forEach(task => {
-                    const riderCard = createTaskElement(task, 'Admin');
-                    // Styling for history cards in Admin view
-                    riderCard.classList.remove('hover:shadow-lg', 'cursor-pointer');
-                    riderCard.classList.add('bg-white', 'p-3', 'border-l-4', 'border-green-500', 'shadow-sm');
-                    riderCard.removeEventListener('click', () => openModal(task, 'Admin')); // Remove click listener
-                    adminRiderHistoryList.appendChild(riderCard);
-                });
-            }
-        }
 
+        // --- UI COMPONENTS ---
 
-        function renderRiderTasks(allTasks) {
-            // Filter tasks for Rider view
-            const availableTasks = allTasks.filter(task => task.status === 'Pending' && !task.claimedBy);
-            // My tasks are those claimed by user, and NOT Complete/Canceled (In Progress)
-            const myTasks = allTasks.filter(task => task.claimedBy === userId && task.status !== 'Complete' && task.status !== 'Canceled');
-            const historyTasks = allTasks.filter(task => task.claimedBy === userId && task.status === 'Complete');
-            
-            // Check for active task (anything in the 'myTasks' list)
-            hasActiveTask = myTasks.length > 0;
-            if (hasActiveTask) {
-                activeTaskWarning.classList.remove('hidden');
-            } else {
-                activeTaskWarning.classList.add('hidden');
-            }
-
-
-            // 1. Available Orders List
-            riderAvailableList.innerHTML = '';
-            if (riderAvailableCount) riderAvailableCount.textContent = availableTasks.length;
-            if (riderAvailableLoading) riderAvailableLoading.classList.add('hidden'); 
-            
-            if (availableTasks.length === 0) {
-                if (riderAvailableEmpty) riderAvailableEmpty.classList.remove('hidden');
-            } else {
-                if (riderAvailableEmpty) riderAvailableEmpty.classList.add('hidden');
-                availableTasks.forEach(task => {
-                    riderAvailableList.appendChild(createTaskElement(task, 'Rider-Available', hasActiveTask));
-                });
-            }
-
-            // 2. My Active Orders List
-            riderMyList.innerHTML = '';
-            if (riderMyCount) riderMyCount.textContent = myTasks.length;
-            if (riderMyLoading) riderMyLoading.classList.add('hidden');
-            
-            if (myTasks.length === 0) {
-                if (riderMyEmpty) riderMyEmpty.classList.remove('hidden');
-            } else {
-                if (riderMyEmpty) riderMyEmpty.classList.add('hidden');
-                myTasks.forEach(task => {
-                    riderMyList.appendChild(createTaskElement(task, 'Rider-My'));
-                });
-            }
-            
-            // 3. History List (Completed)
-            riderHistoryListContent.innerHTML = '';
-            if (riderHistoryCount) riderHistoryCount.textContent = historyTasks.length;
-
-            if (historyTasks.length === 0) {
-                if (riderHistoryEmpty) riderHistoryEmpty.classList.add('hidden');
-            } else {
-                if (riderHistoryEmpty) riderHistoryEmpty.classList.add('hidden');
-                historyTasks.forEach(task => {
-                    const historyCard = createTaskElement(task, 'Rider-History');
-                    // Styling for history cards
-                    historyCard.classList.remove('hover:shadow-lg', 'cursor-pointer');
-                    historyCard.classList.add('bg-white', 'p-3', 'border-l-4', 'border-green-500', 'shadow-sm');
-                    riderHistoryListContent.appendChild(historyCard);
-                });
-            }
-        }
-
-
-        /**
-         * Creates a single task card HTML element.
-         * @param {Object} task - The task data.
-         * @param {string} viewMode - 'Admin', 'Rider-Available', 'Rider-My', or 'Rider-History'.
-         * @param {boolean} [hasActiveTask=false] - True if the rider has an active, non-completed task.
-         * @returns {HTMLElement} The created div element.
-         */
-        function createTaskElement(task, viewMode, hasActiveTask = false) {
-            const statusColors = {
-                'Pending': 'bg-yellow-100 text-yellow-800 border-yellow-300',
-                'In Progress': 'bg-blue-100 text-blue-800 border-blue-300',
-                'Complete': 'bg-green-100 text-green-800 border-green-300',
-                'Canceled': 'bg-red-100 text-red-800 border-red-300',
-            };
-            
-            // Ensure values are available and formatted
-            const fee = task.shippingFee ? task.shippingFee.toFixed(2) : '0.00';
-            const profit = task.riderProfit ? task.riderProfit.toFixed(2) : '0.00';
-            const share = task.companyShare ? task.companyShare.toFixed(2) : '0.00';
-            
-            const taskDiv = document.createElement('div');
-            taskDiv.id = `task-${task.id}`;
-            taskDiv.className = 'bg-gray-50 p-4 rounded-xl shadow hover:shadow-lg transition duration-150 border border-gray-200 cursor-pointer flex flex-col justify-between';
-            
-            let bottomContent = '';
-            let isClickable = true;
-
-            if (viewMode === 'Rider-History') {
-                // History cards are not clickable
-                isClickable = false;
-                taskDiv.classList.remove('cursor-pointer', 'hover:shadow-lg');
-                const completionDate = task.createdAt ? new Date(task.createdAt.toDate()).toLocaleDateString() : 'N/A';
-                bottomContent = `<p class="mt-2 text-sm text-gray-600">Completed on: ${completionDate}</p>`;
-            } else if (viewMode === 'Admin' || viewMode === 'Rider-My') {
-                const claimed = task.claimedBy ? `Claimed by: <span class="font-semibold text-gray-800">${allRiders.find(r => r.id === task.claimedBy)?.username || task.claimedBy.substring(0, 8)}...</span>` : 'Unclaimed';
-                bottomContent = `<p class="mt-2 text-sm text-gray-600">${claimed}</p>`;
-
-                if (viewMode === 'Rider-My') {
-                     // NEW: Direct complete button for active tasks
-                     bottomContent += `
-                        <button data-task-id="${task.id}" class="complete-btn mt-3 w-full bg-green-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-green-700 transition shadow-md">
-                            Mark as Complete
-                        </button>
-                    `;
-                }
-
-            } else if (viewMode === 'Rider-Available') {
-                 if (hasActiveTask) {
-                    // Disable the claim button if rider has an active task
-                    bottomContent = `
-                        <button disabled class="mt-3 w-full bg-gray-400 text-white text-sm font-semibold py-2 rounded-lg cursor-not-allowed">
-                            Finish Active Order First
-                        </button>
-                    `;
-                    // Modal should still open to view details
-                    taskDiv.addEventListener('click', () => openModal(task, viewMode)); 
-                 } else {
-                    bottomContent = `
-                        <button class="claim-btn mt-3 w-full bg-blue-500 text-white text-sm font-semibold py-2 rounded-lg hover:bg-blue-600 transition">
-                            Claim Order
-                        </button>
-                    `;
-                 }
-            }
-            
-            taskDiv.innerHTML = `
-                <div class="space-y-1">
-                    <div class="flex justify-between items-start">
-                        <span class="text-xs font-semibold uppercase tracking-wider text-green-700">Fee: ₱${fee}</span>
-                        <span class="ml-4 text-xs font-medium px-3 py-1 rounded-full border ${statusColors[task.status] || 'bg-gray-100 text-gray-800'}">
-                            ${task.status}
-                        </span>
-                    </div>
-                    <p class="text-gray-900 font-medium text-lg">${task.description}</p>
-                    <div class="text-sm text-gray-600 mt-1">
-                        <p>Rider Profit (70%): <span class="font-bold text-blue-600">₱${profit}</span></p>
-                        <p>Company Share (30%): <span class="font-bold text-red-600">₱${share}</span></p>
+        function renderLoginScreen() {
+            return `
+                <div class="flex items-center justify-center min-h-screen bg-gray-100">
+                    <div class="p-8 bg-white rounded-xl shadow-2xl w-full max-w-sm">
+                        <h1 class="text-3xl font-extrabold text-blue-600 mb-2 text-center">Dispatch Login</h1>
+                        <p class="text-sm text-gray-500 mb-6 text-center">
+                            Admin: KumingAdmin008 / KumingAdmin008<br>
+                            Rider: KumingRider008 / KumingRider008
+                        </p>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
+                                <input type="text" id="username" value="" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+                                <input type="password" id="password" value="" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <button id="login-button" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out">
+                                Login
+                            </button>
+                        </div>
+                        <div id="error-message" class="mt-4 text-center text-red-500 text-sm hidden"></div>
                     </div>
                 </div>
-                ${bottomContent}
-                <p class="text-xs text-gray-400 mt-2 text-right">Order ID: ${task.id.substring(0, 8)}</p>
             `;
-            
-            if (isClickable && viewMode !== 'Rider-History') {
-                if (viewMode === 'Rider-Available') {
-                    if (!hasActiveTask) {
-                        taskDiv.querySelector('.claim-btn').addEventListener('click', (e) => {
-                            e.stopPropagation(); 
-                            claimTask(task.id);
-                        });
-                    }
-                    taskDiv.addEventListener('click', () => openModal(task, viewMode)); 
-                } else if (viewMode === 'Rider-My') {
-                    // Add listener for the new Complete button
-                    taskDiv.querySelector('.complete-btn').addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        completeTask(task.id); // Call new function
-                    });
-                    taskDiv.addEventListener('click', () => openModal(task, viewMode));
-                } else if (viewMode === 'Admin') {
-                    // Admin always opens modal on click
-                    taskDiv.addEventListener('click', () => openModal(task, viewMode));
-                }
-            }
-            
-            return taskDiv;
         }
 
-        // --- RIDER CLAIM LOGIC ---
-        async function claimTask(taskId) {
-            if (!db || !userId) return;
-
-            // 1. CRITICAL CHECK: Does the rider already have an active task?
-            try {
-                const tasksRef = collection(db, getTasksCollectionPath());
-                // Query for tasks claimed by this rider that are NOT 'Complete' or 'Canceled'
-                const q = query(tasksRef, 
-                    where("claimedBy", "==", userId), 
-                    where("status", "in", ['Pending', 'In Progress'])); 
-                const snapshot = await getDocs(q);
-
-                if (!snapshot.empty) {
-                    showMessageModal("One Order Limit Reached", 
-                        "You must complete or cancel your current active order before claiming a new one. Please finish the task already assigned to you.", 
-                        'error');
-                    return;
-                }
-            } catch (error) {
-                console.error("Error checking active tasks:", error);
-                showMessageModal("System Error", "Could not verify active tasks. Try logging out and back in.", 'error');
-                    return;
-            }
-
-
-            // 2. If check passes, proceed with claim (Set status to In Progress)
-            const taskRef = doc(db, getTasksCollectionPath(), taskId);
-
-            try {
-                await updateDoc(taskRef, {
-                    status: 'In Progress',
-                    claimedBy: userId,
-                    claimedAt: serverTimestamp(),
-                });
-                closeModal();
-            } catch (error) {
-                console.error("Error claiming task:", error);
-                showMessageModal("Claim Failed", "An error occurred while trying to claim the order.", 'error');
-            }
+        function renderLayout(content) {
+            return `
+                <div class="min-h-screen bg-gray-50">
+                    <header class="bg-blue-600 shadow">
+                        <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+                            <h1 class="text-2xl font-bold text-white">Kuming Dispatch: ${userRole.toUpperCase()}</h1>
+                            <div class="flex items-center space-x-4">
+                                <span class="text-white text-sm">User ID: ${userId}</span>
+                                <button id="logout-button" class="px-3 py-1 border border-transparent text-sm font-medium rounded-md text-blue-600 bg-white hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition duration-150 ease-in-out">
+                                    Logout
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+                    <main>
+                        <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+                            ${content}
+                        </div>
+                    </main>
+                    ${renderModal()}
+                </div>
+            `;
         }
         
-        // --- NEW FUNCTION: COMPLETE TASK ---
-        async function completeTask(taskId) {
-            if (!db || !userId) return;
+        function renderAdminDashboard() {
+            // Sort orders: Pending first, then Assigned, then In Progress, then Delivered/Completed
+            const sortedOrders = allOrders.sort((a, b) => {
+                const statusOrder = { 'Pending': 1, 'Assigned': 2, 'In Progress': 3, 'Delivered': 4, 'Completed': 5 };
+                return statusOrder[a.status] - statusOrder[b.status];
+            });
 
-            const taskRef = doc(db, getTasksCollectionPath(), taskId);
+            return `
+                <div class="space-y-8">
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Create New Order</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <input type="text" id="new-customer-name" placeholder="Customer Name" class="p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <input type="text" id="new-address" placeholder="Delivery Address" class="p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <input type="text" id="new-details" placeholder="Order Details (e.g., 2 Pizzas, 1 Drink)" class="p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <button id="create-order-button" class="mt-4 w-full py-2 px-4 rounded-md text-white bg-green-500 hover:bg-green-600 transition duration-150 ease-in-out">
+                            Create Order
+                        </button>
+                    </div>
 
-            try {
-                // Update status to Complete
-                await updateDoc(taskRef, {
-                    status: 'Complete',
-                });
-                // The onSnapshot listener will handle the UI update (moving it to history)
-            } catch (error) {
-                console.error("Error completing task:", error);
-                showMessageModal("Completion Failed", "An error occurred while trying to mark the order as complete.", 'error');
-            }
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">All Orders (${allOrders.length})</h2>
+                        <div class="space-y-4">
+                            ${sortedOrders.length > 0 ? sortedOrders.map(renderAdminOrderCard).join('') : '<p class="text-gray-500">No orders found.</p>'}
+                        </div>
+                    </div>
+                </div>
+            `;
         }
+        
+        function renderAdminOrderCard(order) {
+            const statusColor = {
+                'Pending': 'bg-yellow-100 text-yellow-800',
+                'Assigned': 'bg-blue-100 text-blue-800',
+                'In Progress': 'bg-indigo-100 text-indigo-800',
+                'Delivered': 'bg-green-100 text-green-800',
+                'Completed': 'bg-green-200 text-green-800 font-bold',
+            }[order.status] || 'bg-gray-100 text-gray-800';
 
-
-        // --- MODAL LOGIC (Simplified for Rider views) ---
-
-        function openModal(task, viewMode) {
-            currentTaskId = task.id;
-            document.getElementById('modal-task-id').textContent = task.id.substring(0, 8);
-            document.getElementById('modal-description').value = task.description;
+            const formattedTime = order.createdAt ? new Date(order.createdAt.seconds * 1000).toLocaleString() : 'N/A';
+            const riderName = order.riderId ? allRiders.find(r => r.uid === order.riderId)?.uid || order.riderId : 'Unassigned';
             
-            // Set financial values
-            modalShippingFee.value = `₱${task.shippingFee ? task.shippingFee.toFixed(2) : '0.00'}`;
-            modalRiderProfit.textContent = `₱${task.riderProfit ? task.riderProfit.toFixed(2) : '0.00'}`;
-            modalCompanyShare.textContent = `₱${task.companyShare ? task.companyShare.toFixed(2) : '0.00'}`;
-
-            // Reset modal buttons/fields
-            modalDeleteBtn.classList.add('hidden');
-            modalUpdateBtn.classList.add('hidden');
-            modalClaimBtn.classList.add('hidden');
-            claimedByRow.classList.add('hidden');
-            statusRow.classList.remove('hidden');
-            modalStatus.disabled = false;
-            
-            // Set up modal based on view mode
-            if (userRole === 'Admin') {
-                document.getElementById('modal-title').textContent = "Order Details (Admin)";
-                modalDeleteBtn.classList.remove('hidden');
-                modalUpdateBtn.classList.remove('hidden');
-                claimedByRow.classList.remove('hidden');
-                modalStatus.value = task.status;
-                const claimedUsername = allRiders.find(r => r.id === task.claimedBy)?.username || (task.claimedBy ? task.claimedBy.substring(0, 8) + '...' : 'Unclaimed');
-                document.getElementById('modal-claimedBy').value = claimedUsername;
-            } else if (userRole === 'Rider') {
-                modalStatus.value = task.status; // Ensure the status dropdown reflects current state
-
-                if (task.claimedBy === userId) {
-                    // Rider's active/completed task (Read-Only)
-                    document.getElementById('modal-title').textContent = "My Order Details (Read-Only)";
-                    claimedByRow.classList.remove('hidden');
-                    document.getElementById('modal-claimedBy').value = allRiders.find(r => r.id === userId)?.username || userId.substring(0, 8) + '...';
-
-                    // Rider status updates are handled by the card button; modal is informational
-                    modalStatus.disabled = true; 
-                    modalUpdateBtn.classList.add('hidden'); 
-
-                } else if (!task.claimedBy && task.status === 'Pending') {
-                    // Available order preview
-                    document.getElementById('modal-title').textContent = "Available Order Preview";
-                    statusRow.classList.add('hidden'); 
+            return `
+                <div class="p-4 border rounded-lg shadow-sm bg-white hover:shadow-md transition duration-150 ease-in-out">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-lg font-bold text-gray-900">Order #${order.id.substring(0, 8)}</h3>
+                        <span class="px-3 py-1 text-xs font-semibold rounded-full ${statusColor}">${order.status}</span>
+                    </div>
                     
-                    // Only allow claiming if the rider has no other active tasks
-                    if (!hasActiveTask) {
-                        modalClaimBtn.classList.remove('hidden');
-                    }
-                }
-            }
+                    <p class="text-sm text-gray-600"><strong>Customer:</strong> ${order.customerName}</p>
+                    <p class="text-sm text-gray-600"><strong>Details:</strong> ${order.details}</p>
+                    <p class="text-sm text-gray-600"><strong>Address:</strong> ${order.address}</p>
+                    <p class="text-xs text-gray-400 mt-1">Created: ${formattedTime}</p>
+                    
+                    <div class="mt-3 pt-3 border-t border-dashed">
+                        <p class="text-sm font-medium text-gray-700 mb-2">Rider: ${riderName}</p>
+                        
+                        ${order.status === 'Pending' ? `
+                            <div class="flex space-x-2 items-center">
+                                <select id="rider-select-${order.id}" class="flex-grow p-2 border border-gray-300 rounded-md text-sm">
+                                    <option value="">Select Rider</option>
+                                    ${allRiders.map(rider => `<option value="${rider.uid}">${rider.uid}</option>`).join('')}
+                                </select>
+                                <button id="assign-btn-${order.id}" class="px-3 py-2 text-sm font-medium rounded-md text-white bg-indigo-500 hover:bg-indigo-600 transition duration-150 ease-in-out whitespace-nowrap">
+                                    Assign
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
 
-            // Two-step delete reset
-            modalDeleteBtn.textContent = 'Delete Order';
-            modalDeleteBtn.classList.remove('bg-orange-500');
-            modalDeleteBtn.classList.add('bg-red-500');
-            isDeleteConfirmed = false;
+        function renderRiderDashboard() {
+             // Sort orders: In Progress/Assigned first, then Delivered, then Completed
+            const sortedOrders = allOrders.sort((a, b) => {
+                const statusOrder = { 'Assigned': 1, 'In Progress': 2, 'Delivered': 3, 'Completed': 4 };
+                return statusOrder[a.status] - statusOrder[b.status];
+            });
+
+            const currentOrders = sortedOrders.filter(o => o.status !== 'Completed');
+            const completedOrders = sortedOrders.filter(o => o.status === 'Completed');
             
-            taskModal.classList.remove('hidden');
-            taskModal.classList.add('flex');
+            return `
+                <div class="space-y-8">
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Your Current Deliveries (${currentOrders.length})</h2>
+                        <div class="space-y-4">
+                            ${currentOrders.length > 0 ? currentOrders.map(renderRiderOrderCard).join('') : '<p class="text-gray-500">No active deliveries assigned.</p>'}
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Completed Deliveries (${completedOrders.length})</h2>
+                        <div class="space-y-4 opacity-70">
+                            ${completedOrders.length > 0 ? completedOrders.map(renderRiderOrderCard).join('') : '<p class="text-gray-500">No completed deliveries yet.</p>'}
+                        </div>
+                    </div>
+                </div>
+            `;
         }
         
-        // --- MESSAGE MODAL FUNCTIONS ---
+        function renderRiderOrderCard(order) {
+            const statusColor = {
+                'Pending': 'bg-yellow-100 text-yellow-800',
+                'Assigned': 'bg-blue-100 text-blue-800',
+                'In Progress': 'bg-indigo-100 text-indigo-800',
+                'Delivered': 'bg-green-100 text-green-800',
+                'Completed': 'bg-green-200 text-green-800 font-bold',
+            }[order.status] || 'bg-gray-100 text-gray-800';
 
-        function showMessageModal(title, body, type = 'info') {
-            messageModalTitle.textContent = title;
-            messageModalBody.textContent = body;
+            const formattedTime = order.createdAt ? new Date(order.createdAt.seconds * 1000).toLocaleTimeString() : 'N/A';
             
-            // Adjust styling based on type (simple implementation)
-            messageModalTitle.classList.remove('text-red-600', 'text-blue-600');
-            messageModalTitle.classList.add(type === 'error' ? 'text-red-600' : 'text-blue-600');
-
-            messageModal.classList.remove('hidden');
-            messageModal.classList.add('flex');
+            return `
+                <div class="p-4 border rounded-lg shadow-sm bg-white hover:shadow-md transition duration-150 ease-in-out">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-lg font-bold text-gray-900">Order #${order.id.substring(0, 8)}</h3>
+                        <span class="px-3 py-1 text-xs font-semibold rounded-full ${statusColor}">${order.status}</span>
+                    </div>
+                    
+                    <p class="text-sm text-gray-600"><strong>Customer:</strong> ${order.customerName}</p>
+                    <p class="text-sm text-gray-600"><strong>Details:</strong> ${order.details}</p>
+                    <p class="text-sm font-bold text-gray-700"><strong>Address:</strong> ${order.address}</p>
+                    <p class="text-xs text-gray-400 mt-1">Assigned at: ${formattedTime}</p>
+                    
+                    <div class="mt-3 pt-3 border-t border-dashed">
+                        ${order.status === 'Assigned' ? `
+                            <button id="start-btn-${order.id}" class="w-full py-2 px-4 rounded-md text-white bg-blue-500 hover:bg-blue-600 transition duration-150 ease-in-out">
+                                Start Delivery
+                            </button>
+                        ` : ''}
+                        
+                        ${order.status === 'In Progress' ? `
+                            <button id="delivered-btn-${order.id}" class="w-full py-2 px-4 rounded-md text-white bg-yellow-500 hover:bg-yellow-600 transition duration-150 ease-in-out">
+                                Arrived/Handed Over
+                            </button>
+                        ` : ''}
+                        
+                        ${order.status === 'Delivered' ? `
+                            <button id="complete-btn-${order.id}" class="w-full py-2 px-4 rounded-md text-white bg-green-500 hover:bg-green-600 transition duration-150 ease-in-out">
+                                Complete Order
+                            </button>
+                        ` : ''}
+                        
+                        ${order.status === 'Completed' ? `
+                            <p class="text-center text-sm font-semibold text-green-600">Order is completed.</p>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
         }
 
-        function closeMessageModal() {
-            messageModal.classList.add('hidden');
-            messageModal.classList.remove('flex');
-        }
-        
-        document.getElementById('message-modal-close-btn').addEventListener('click', closeMessageModal);
-        messageModal.addEventListener('click', (e) => {
-            if (e.target === messageModal) {
-                closeMessageModal();
+        // --- MODAL / MESSAGE BOX ---
+        let modalState = {
+            title: '',
+            message: '',
+            isVisible: false
+        };
+
+        function showModal(title, message) {
+            modalState = { title, message, isVisible: true };
+            const modal = document.getElementById('global-modal');
+            if (modal) {
+                document.getElementById('modal-title').innerText = title;
+                document.getElementById('modal-message').innerText = message;
+                modal.classList.remove('hidden');
             }
-        });
-
+        }
 
         function closeModal() {
-            taskModal.classList.add('hidden');
-            taskModal.classList.remove('flex');
-            currentTaskId = null;
-            isDeleteConfirmed = false;
+            modalState.isVisible = false;
+            const modal = document.getElementById('global-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
         }
 
-        document.getElementById('modal-close-btn').addEventListener('click', closeModal);
-        document.getElementById('modal-close-x').addEventListener('click', closeModal);
-        taskModal.addEventListener('click', (e) => {
-            if (e.target === taskModal) {
-                closeModal();
-            }
+        function renderModal() {
+            // Note: The modal is rendered once in the layout and controlled via CSS classes
+            return `
+                <div id="global-modal" class="fixed inset-0 z-50 overflow-y-auto ${modalState.isVisible ? '' : 'hidden'}" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                        <!-- Background overlay -->
+                        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+                        
+                        <!-- Modal content -->
+                        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                                <div class="sm:flex sm:items-start">
+                                    <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
+                                        <svg class="h-6 w-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                    <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                                        <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title"></h3>
+                                        <div class="mt-2">
+                                            <p class="text-sm text-gray-500" id="modal-message"></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                                <button type="button" onclick="closeModal()" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // --- INITIAL KICKOFF ---
+        // Add listeners to ensure the modal functions before the main app starts
+        window.closeModal = closeModal; // Expose to global scope for inline onclick
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderApp(); // Initial render will handle login or dashboard based on auth state
         });
         
-        document.getElementById('modal-claim-btn').addEventListener('click', () => {
-             if (currentTaskId) {
-                 claimTask(currentTaskId);
-             }
-        });
-
-        document.getElementById('modal-update-btn').addEventListener('click', async () => {
-            // This button is only visible for Admin
-            if (!currentTaskId || !db || userRole !== 'Admin') return;
-
-            const newStatus = modalStatus.value;
-            const taskRef = doc(db, getTasksCollectionPath(), currentTaskId);
-
-            try {
-                await updateDoc(taskRef, {
-                    status: newStatus,
-                });
-                closeModal();
-            } catch (error) {
-                console.error("Error updating task status:", error);
-            }
-        });
-
-        document.getElementById('modal-delete-btn').addEventListener('click', async () => {
-            if (!currentTaskId || !db || userRole !== 'Admin') return;
-
-            if (isDeleteConfirmed) {
-                const taskRef = doc(db, getTasksCollectionPath(), currentTaskId);
-
-                try {
-                    await deleteDoc(taskRef);
-                    closeModal();
-                } catch (error) {
-                    console.error("Error deleting task:", error);
-                }
-            } else {
-                modalDeleteBtn.textContent = 'CONFIRM Delete?';
-                modalDeleteBtn.classList.remove('bg-red-500');
-                modalDeleteBtn.classList.add('bg-orange-500');
-                isDeleteConfirmed = true;
-            }
-        });
-
     </script>
+</head>
+<body class="font-sans antialiased">
+    <div id="app">
+        <!-- Content will be injected here by the renderApp function -->
+    </div>
 </body>
 </html>
